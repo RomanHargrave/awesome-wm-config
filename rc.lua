@@ -103,7 +103,10 @@ mykeyboardlayout = awful.widget.keyboardlayout()
 -- Wibar is disabled in favor of the plasma panel system
 -- {{{ Wibar
 -- Create a textclock widget
-mytextclock = wibox.widget.textclock()
+local clockFmt = "%Y-%m-%d %H:%M %Z"
+local clockRefresh = 60
+local localTextClock = wibox.widget.textclock(clockFmt .. " / ", clockRefresh)
+local utcTextClock = wibox.widget.textclock(clockFmt, clockRefresh, "UTC+00:00")
 
 -- Create a wibox for each screen and add it
 local taglist_buttons = gears.table.join(
@@ -190,7 +193,8 @@ awful.screen.connect_for_each_screen(function(s)
             layout = wibox.layout.fixed.horizontal,
             mykeyboardlayout,
             wibox.widget.systray(),
-            mytextclock,
+            localTextClock,
+            utcTextClock,
             s.mylayoutbox,
          },
       }
