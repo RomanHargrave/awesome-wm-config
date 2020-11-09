@@ -315,6 +315,9 @@ globalkeys = gears.table.join(
    awful.key({}, "XF86AudioNext", function() media:next() end),
    awful.key({ "Mod1" }, "XF86AudioNext", function() media:previous() end),
 
+   -- Take a screenshot
+   awful.key({}, "F22", function() awful.spawn("flameshot gui") end),
+   
    -- Display brightness (monitor backlights)
    awful.key({ modkey }, "F13", function() ddc:inc("10", 5) end),
    awful.key({ modkey }, "F1",  function() ddc:dec("10", 5) end),
