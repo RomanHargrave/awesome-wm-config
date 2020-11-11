@@ -1,3 +1,3 @@
 * Awesome (WM) configuration
 
-My not-terribly-decent awesome configuration and some hacks that go with it.
+My (overly complicated) awesome config
