@@ -23,6 +23,8 @@ local wm_state = {
    modkey          = "Mod4",
 }
 
+_G.rh_data = wm_state -- i'm lazy (shrug)
+
 -- Collects fragments to load
 function collect_frags(dir)
    local sorted = {}

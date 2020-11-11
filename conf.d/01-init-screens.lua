@@ -53,6 +53,8 @@ return function(state, full)
       }
    }
 
+   state.tag_index = {}
+
    -- Set up keybindings for global tags (up to 9)
    for n, tag_name in ipairs(state.global_tags) do
       if n > 9 then
@@ -117,7 +119,16 @@ return function(state, full)
                                    end
                          end)
             ) -- table.insert
+
+            state.tag_index[tag.name] = {
+               kind = 'screen',
+               data = tag
+            }
          end
-      end
+      end -- for _i, group in ipairs(...) do
+   end -- if state.specific_tags then
+
+   for _, gbl in ipairs(state.global_tags) do
+      state.tag_index[gbl] = { kind = 'global', data = { name = gbl } }
    end
 end
