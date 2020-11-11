@@ -84,6 +84,8 @@ end
 
 function CommandPrompt:invoke_command(command)
    local argv = util.string.split(command, ' ')
+   argv.raw = command
+
    local command = nil
    for _, cmd in ipairs(self.commands) do
       if cmd.verb == argv[1] then
@@ -93,7 +95,7 @@ function CommandPrompt:invoke_command(command)
    end
 
    if command and command.exec_fn then
-      command.exec_fn(argv)
+      return command.exec_fn(argv)
    end
 end
 
