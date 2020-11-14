@@ -95,7 +95,8 @@ function CommandPrompt:invoke_command(command)
    end
 
    if command and command.exec_fn then
-      return command.exec_fn(argv)
+      local e, r = pcall(command.exec_fn, argv)
+      return r
    end
 end
 
@@ -163,9 +164,6 @@ function CommandPrompt:handle_completion(content, cursor_pos, cycle)
       self.working_suggestions = util.table.join(self.suggestions)
       self.working_suggestion_index = self.selection_index
    end
-   
-   -- local lhs_debug = str_join(lhs_tokens, ',')
-   -- print("lhs={" .. lhs_debug .. '} tac="' .. tac .. '" rhs="' .. rhs .. '" cycle=' .. cycle .. ' wknum=' .. #self.working_suggestions)
 
    local suggestion =
       self.working_suggestions[math.fmod(self.working_suggestion_index - 1 + cycle - 1, #self.working_suggestions) + 1]
