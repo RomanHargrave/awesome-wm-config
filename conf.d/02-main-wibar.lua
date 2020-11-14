@@ -17,29 +17,15 @@ return function(state, full)
    )
 
    local tasklist_buttons = util.table.join(
+      -- Toggle client focus/visibility
       wm.button({}, 1, function(client)
-            if wm.client.focus == client then
-               client.minimized = true
-            else
-               client.minimized = false
-
-               -- of limited use since I do not intend to include tag peek
-               if not client:isvisible() and client.first_tag then
-                  client.first_tag:view_only()
-               end
-
-               wm.client.focus = client
-               client:raise()
-            end
+            client:activate { context = 'tasklist',
+                              action  = 'toggle_minimization' }
       end),
 
+      -- Show client menu
       wm.button({}, 3, function(client)
-            if state.client_menu and state.client_menu.visible then
-               state.client_menu:hide()
-               state.client_menu = nil
-            else
-               state.client_menu = wm.menu.clients({ theme = { width = 250 } })
-            end
+            wm.menu.client_list { theme = { width = 250 } }
       end)
    )
 
@@ -47,7 +33,7 @@ return function(state, full)
    local clockRefresh = 60 -- seconds
 
    if not state.utcClock then
-      state.utcClock = wibox.widget.textclock(timeFormat, clockRefresh, "UTC+00:00")
+      state.utcClock = wibox.widget.textclock(timeFormat, clockRefresh, 'UTC+00:00')
    end
 
    if not state.localClock then
@@ -79,7 +65,7 @@ return function(state, full)
          local taglist  = wm.widget.taglist(screen, wm.widget.taglist.filter.all, taglist_buttons)
          local tasklist = wm.widget.tasklist(screen, wm.widget.tasklist.filter.currenttags, tasklist_buttons)
 
-         screen.wibar = wm.wibar({ position = "top",
+         screen.wibar = wm.wibar({ position = 'bottom',
                                    screen   = screen,
                                    ontop    = true })
 
@@ -91,7 +77,8 @@ return function(state, full)
                   -- these are defined in the screens fragment
                   taglist,
                   screen.prompt,
-                  tasklist
+                  screen.layout_chooser,
+                  tasklist,
                },
                screen.tasklist,
                {
@@ -100,7 +87,6 @@ return function(state, full)
                   wibox.widget.separator { forced_width = 10 },
                   state.utcClock,
                   state.systray,
-                  screen.layout_chooser
                }
          })
    end)
