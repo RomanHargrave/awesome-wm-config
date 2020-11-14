@@ -4,16 +4,44 @@
 local wm = require('awful')
 local util = require('gears')
 
+local function remove_verb(command)
+   return command:gsub('^[^%s]+%s*', '')
+end
+
+-- Convert a screen table to NxN coords
 local function screen_to_coords(screen)
    local wa = screen.workarea
    return wa.x .. 'x' .. wa.y
 end
 
+-- Convert NxN to {n, n} or N to {n, 0}
 local function coords_to_table(coordstr)
    local c = util.string.split(coordstr, 'x')
    return tonumber(c[1]), tonumber(c[2] or '0') 
 end
 
+-- Suggest matching tag names
+local function suggest_tags(filter)
+   local suggestions = {}
+   for _, gbl in ipairs(rh_data.global_tags) do
+      if string.find(gbl, filter) then
+         table.insert(suggestions, { text = gbl,
+                                     description = 'on all screens' })
+      end
+   end
+
+   for _, output in ipairs(rh_data.specific_tags) do
+      for _, tag in ipairs(output.tags) do
+         if string.find(tag.name, filter) then
+            table.insert(suggestions, { text = tag.name,
+                                        description = 'on screen +' .. output.x .. 'x' .. output.y })
+         end
+      end
+   end
+   return suggestions
+end
+
+-- Suggest screens that might contain the exact tag name
 local function suggest_screens_for_tag(tag_name, filter)
    local tag_info = rh_data.tag_index[tag_name]
    if not tag_info then return {} end
@@ -34,6 +62,68 @@ local function suggest_screens_for_tag(tag_name, filter)
    return suggestions
 end
 
+-- Suggest client matches given criteria
+local function suggest_clients(criteria)
+   -- collect all matching clients
+   local suggestions = {}
+
+   -- matching window IDs or titles?
+   if criteria:sub(1,1) == '#' then
+      local wid = criteria:sub(2, #criteria)
+      for _, client in ipairs(_G.client.get()) do
+         if string.match(tostring(client.window), '^' .. wid) then
+            table.insert(suggestions, { text = '#' .. client.window,
+                                        description = client.name })
+         end
+      end
+   else
+      for _, client in ipairs(_G.client.get()) do
+      if string.find(client.name, criteria) then
+            table.insert(suggestions, { text = client.name,
+                                        description = 'client #' .. client.window })
+         end
+      end
+   end
+
+   return suggestions
+end
+
+-- Select a matching client for criteria
+local function find_client(criteria)
+   local client = nil
+
+   if criteria:sub(1,1) == '#' then
+      local wid = tonumber(criteria:sub(2, #criteria))
+
+      for _, c in ipairs(_G.client.get()) do
+         if c.window == wid then
+            client = c
+            break
+         end
+      end
+   else
+      -- do exact matches first
+      for _, c in ipairs(_G.client.get()) do
+         if c.name == criteria then
+            client = c
+            break
+         end
+      end
+
+      -- if no client was an exact match, pick the first with a prefix match
+      if not client then
+         for _, c in ipairs(_G.client.get()) do
+            if string.match(c.name, '^' .. criteria) then
+               client = c
+               break
+            end
+         end
+      end
+   end
+
+   return client
+end
+
 local base_commands = {
    {
       verb = 'st',
@@ -47,21 +137,7 @@ local base_commands = {
 
          -- We're completing tag names
          if #tok <= 2 then
-            for _, gbl in ipairs(rh_data.global_tags) do
-               if string.find(gbl, tag_tok) then
-                  table.insert(suggestions, { text = gbl,
-                                              description = 'on all screens' })
-               end
-            end
-
-            for _, output in ipairs(rh_data.specific_tags) do
-               for _, tag in ipairs(output.tags) do
-                  if string.find(tag.name, tag_tok) then
-                     table.insert(suggestions, { text = tag.name,
-                                                 description = 'on screen +' .. output.x .. 'x' .. output.y })
-                  end
-               end
-            end
+            suggestions = suggest_tags(tag_tok)
          elseif #tok <= 3 then -- now we're completing screen indices
             suggestions = suggest_screens_for_tag(tag_tok, scr_tok)
          end
@@ -91,24 +167,56 @@ local base_commands = {
       end
    },
    {
+      verb = 'sc',
+      description = 'switch to client',
+      help = 'sc <client name>',
+      completion_fn = function(query)
+         -- remove sc from begining
+         return suggest_clients(remove_verb(query))
+      end,
+      exec_fn = function(argv)
+         -- remove sc from begining
+         local client = find_client(remove_verb(argv.raw))
+
+         if client then
+            client:jump_to(false)
+         end
+      end
+   },
+   {
       verb = 'mc',
-      description = 'move focused client',
-      help = 'mc <tag> [screen = current]'
-   },
-   {
-      verb = 'reconfigure',
-      description = 'reload configuration',
-      help = 'reconfigure [full?]'
-   },
-   {
-      verb = 'sl',
-      description = 'set layout for focused tag',
-      help = 'sl [layout]'
+      description = 'move client',
+      help = 'mc <tag> [screen = current]',
+      completion_fn = function(query)
+         -- todo support specifying client rather than focused
+      end,
+      exec_fn = function(query)
+      end
    },
    {
       verb = 'l',
       description = 'run lua',
-      help = 'l [lua*]'
+      help = 'l [lua*]',
+      exec_fn = function(argv)
+         -- remove 'l' from argv
+         local cmd = remove_verb(argv.raw)
+         local fn = loadstring(cmd)
+         local e, r = pcall(fn)
+
+         if not e then
+            util.debug.print_warning(
+               'Error while evaluating lua «' .. cmd .. '»: ' .. r
+            )
+         end
+      end
+   },
+   {
+      verb = 'r',
+      description = 'run command',
+      help = 'r command*',
+      exec_fn = function(argv)
+         wm.spawn(remove_verb(argv.raw))
+      end
    }
 }
 
