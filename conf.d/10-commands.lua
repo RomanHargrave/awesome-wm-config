@@ -129,7 +129,8 @@ local base_commands = {
       verb = 'st',
       description = 'switch tag',
       help = 'sw <tag> [screen = focused()]',
-      completion_fn = function(query)
+      completion_fn = function(data)
+         local query = data.query
          local suggestions = {}
          local tok = util.string.split(query, ' ')
          local tag_tok = tok[2] or ''
@@ -170,16 +171,24 @@ local base_commands = {
       verb = 'sc',
       description = 'switch to client',
       help = 'sc <client name>',
-      completion_fn = function(query)
+      completion_fn = function(data)
          -- remove sc from begining
-         return suggest_clients(remove_verb(query))
+         local nw = data.syn.head:next_word()
+
+         if nw then
+            return suggest_clients(nw:join_raw())
+         else
+            return suggest_clients('')
+         end
       end,
       exec_fn = function(argv)
-         -- remove sc from begining
-         local client = find_client(remove_verb(argv.raw))
+         if #argv > 1 then
+            -- remove sc from begining
+            local client = find_client(argv[2])
 
-         if client then
-            client:jump_to(false)
+            if client then
+               client:jump_to(false)
+            end
          end
       end
    },

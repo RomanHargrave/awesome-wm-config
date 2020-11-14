@@ -6,6 +6,8 @@ local wm = require('awful')
 local util = require('gears')
 local wibox = require('wibox')
 local theme = require('beautiful')
+local tokenizer = require('lib/tokenizer')
+local rh = require('lib/rh')
 
 local CommandPrompt = {}
 
@@ -83,20 +85,23 @@ function CommandPrompt:handle_keypress(mod, key, text)
 end
 
 function CommandPrompt:invoke_command(command)
-   local argv = util.string.split(command, ' ')
-   argv.raw = command
+   local syn = tokenizer.tokenize(command)
+   if syn.head then
+      local argv = syn.head:collect_plain_words()
+      argv.raw = command
 
-   local command = nil
-   for _, cmd in ipairs(self.commands) do
-      if cmd.verb == argv[1] then
-         command = cmd
-         break
+      local command = nil
+      for _, cmd in ipairs(self.commands) do
+         if cmd.verb == argv[1] then
+            command = cmd
+            break
+         end
       end
-   end
 
-   if command and command.exec_fn then
-      local e, r = pcall(command.exec_fn, argv)
-      return r
+      if command and command.exec_fn then
+         local e, r = pcall(command.exec_fn, argv)
+         return r
+      end
    end
 end
 
@@ -120,45 +125,12 @@ local function str_join(tbl, delim)
    return a:sub(2, #a)
 end
 
-local function tokenize(str, cursor)
-   local tokens = {}
-   local rhs = ''
-
-   local buf = ''
-
-   for i = 1, #str do
-      local c = str:sub(i, i)
-      if c == ' ' and accum ~= '' then
-         if i >= cursor then
-            rhs = str:sub(i, #str)
-
-            -- tiebreaker: look ahead and see if rhs starts with a space,
-            -- if it does, put TAC onto lhs
-            if rhs:sub(1,1) == ' ' then
-               table.insert(tokens, buf)
-               buf = ''
-            end
-
-            break
-         end
-
-         table.insert(tokens, buf)
-         buf = ''
-      else
-         buf = buf .. c
-      end
-   end
-
-   return tokens, buf, rhs
-end
-
 -- Handle prompt completion, operates on space-separated tokens
 -- @param content current prompt contents
 -- @param cursor_pos current index within prompt
 -- @param cycle current iteration in completion
 function CommandPrompt:handle_completion(content, cursor_pos, cycle)
-   -- split content into tokens up to the cursor, place remainder in rhs
-   local lhs_tokens, tac, rhs = tokenize(content, cursor_pos)
+   local syn = tokenizer.tokenize(content, cursor_pos)
 
    if cycle == 1 then
       self.working_suggestions = util.table.join(self.suggestions)
@@ -169,22 +141,39 @@ function CommandPrompt:handle_completion(content, cursor_pos, cycle)
       self.working_suggestions[math.fmod(self.working_suggestion_index - 1 + cycle - 1, #self.working_suggestions) + 1]
 
    if suggestion then
-      local lhs = str_join(util.table.join(lhs_tokens, { suggestion.text }), ' ')
-      return lhs .. rhs, #lhs + 1
+      local at_point = nil
+
+      if not syn.head then -- if there is no head token (content = '') then crete one
+         syn.head = tokenizer.singleton(suggestion.text)
+         at_point = syn.head
+      else -- otherwise, append to or alter the split point (can be tail if cursor_pos == #content)
+         if syn.split_token.whitespace then -- the split token is whitespace, so we need to append the suggestion
+            at_point = syn.split_token:append(tokenizer.singleton(suggestion.text))
+         else -- the split token is not whitespace, so we need to update its contents
+            syn.split_token:update(suggestion.text)
+            at_point = syn.split_token
+         end
+      end
+
+      return syn.head:join(), at_point.end_pos + 1
    end
    
    return content, cursor_pos
 end
 
 -- Generate suggestions for a query
+-- TODO it would be great if i could inspect the cursor position in the prompt...
 -- @param query prompt content
 function CommandPrompt:generate_suggestions(query)
    self.suggestions = {}
+   local syn = tokenizer.tokenize(query)
+   local count = 0
+   local verb = ''
+   if syn.head then
+      verb = syn.head.content
+      count = syn.head:word_count()
+   end
 
-   local tokens = util.string.split(query, ' ')
-   local verb = table.remove(tokens, 1)
-
-   -- first, try to match a command
    for _, command in ipairs(self.commands) do
       if string.match(command.verb, '^' .. verb) then
          table.insert(self.suggestions, { command = command,
@@ -192,16 +181,22 @@ function CommandPrompt:generate_suggestions(query)
                                           text = command.verb })
       end
    end
+   
+   if count > 0 then
+      local suggestion = self:find_suggestion_by_text(verb)
 
-   -- if only one command was matched and there is something after the verb,
-   -- defer to a command-provided completion if available
-   if #tokens > 0 then
-      local suggestion = self:find_suggestion_by_text(verb) -- we can't rely on selection here
-      local tail = table.remove(tokens, #tokens)
-
-      if suggestion and suggestion.command and suggestion.command.completion_fn then
-         self.suggestions = suggestion.command.completion_fn(query)
+      if suggestion
+         and suggestion.command
+         and suggestion.command.completion_fn
+      then
+         local s, r = pcall(suggestion.command.completion_fn, { syn = syn, query = query })
+         if s then
+            self.suggestions = r or {}
+         else
+            util.debug.print_warning('Completion delegate failed for verb «' .. verb .. '»: ' .. tostring(r))
+         end
       else
+         -- don't show anything, otherwise we'd be offering bad completions
          self.suggestions = {}
       end
    end
@@ -306,4 +301,6 @@ return function(state, full)
                       end
                 end)
    ) -- table.insert
+
+   state.command_prompt:show()
 end

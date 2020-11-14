@@ -37,25 +37,39 @@ function Token:new(params)
    return t
 end
 
-function Token.from_string(str)
+local function scan_whitespace(str)
+   local r = 'none'
+
+   local whitespace_only = true
+   local whitespace_flag = false
+
+   for i = 1, #str do
+      whitespace_flag = whitespace_flag or is_whitespace(str:sub(i, i))
+      whitespace_only = whitespace_only and whitespace_flag
+   end
+
+   if whitespace_only then
+      r = 'only'
+   elseif whitespace_flag then
+      r = 'some'
+   end
+
+   return r
+end
+
+function Token.singleton(str)
    local tbl = {
-      whitespace = true,
       content    = str,
       quote      = '',
       start_pos  = 0,
       end_pos    = #str,
    }
 
-   local whitespace_flag = false
-
-   for i = 1, #str do
-      whitespace_flag = whitespace_flag or is_whitespace(str:sub(i, i))
-      tbl.whitespace = tbl.whitespace and whitespace_flag
+   local w = scan_whitespace(str)
+   if w == 'some' then
+      tbl.quote = '"'
    end
-
-   if whitespace_flag and not tbl.whitespace then
-     tbl.quote = '"'
-   end
+   tbl.whitespace = w == 'only'
 
    return Token:new(tbl)
 end
@@ -73,11 +87,27 @@ function Token:recompute_offset()
    end
 end
 
+function Token:update(content)
+   self.content = content
+   local w = scan_whitespace(content)
+   if w == 'some' then
+      self.quote = '"'
+   else
+      self.quote = ''
+   end
+   self.whitespace = w == 'only'
+   self:recompute_offset()
+end
+
 -- Append a chain of tokens to this token, recompute offset
 -- This will take a token (and implicitly it's linked tokens)
 -- and insert that token chain between this token and its current neighbour
 -- after doing this, the start_pos will be recomputed for all tokens after this token
 function Token:append(token)
+   if token == nil then
+      return nil
+   end
+
    token:tail().next = self.next
    self.next = token
    self:recompute_offset()
@@ -86,11 +116,11 @@ end
 
 -- Same as append, but inserts whitespace before the new token
 -- if the next token would not otherwise be whitespace
-function Token:append_separated(token)
+function Token:append_sep(token)
    if self.whitespace then
       return self:append(token)
    else
-      return self:append(Token.from_string(' ')):append(token)
+      return self:append(Token.singleton(' ')):append(token)
    end
 end
 
@@ -150,12 +180,44 @@ function Token:tail()
    end
 end
 
+-- Get the last word in the chain
+function Token:tail_word(limit_pos)
+   local w = nil
+   for word in self:iter_words() do
+      if limit_pos
+         and word.start_pos >= limit_pos
+      then
+         return w
+      end
+
+      w = word
+   end
+   return w
+end
+
+function Token:count()
+   local r = 0
+   for token in self:iter() do
+      r = r + 1
+   end
+   return r
+end
+
+function Token:word_count()
+   local r = 0
+   for token in self:iter_words() do
+      r = r + 1
+   end
+   return r
+end
+
 -- Collect words in non-token form
 function Token:collect_plain_words()
    local words = {}
    for token in self:iter_words() do
-      table.insert(token.content)
+      table.insert(words, token.content)
    end
+   return words
 end
 
 function Token:escaped()
@@ -182,12 +244,8 @@ function Token:string()
    return self.quote .. self:escaped() .. self.quote
 end
 
--- probably not a good idea
 function Token:join()
    local buf = ''
-
-   local token = self
-
 
    for token in self:iter() do
       buf = buf .. token:string()
@@ -195,6 +253,17 @@ function Token:join()
 
    return buf
 end
+
+function Token:join_raw()
+   local buf = ''
+
+   for token in self:iter() do
+      buf = buf .. token.content
+   end
+
+   return buf
+end
+
 
 -- Decompose a string composed of space-separated tokens into its individual tokens.
 -- Supports quoting, and partial tokenization.
@@ -204,7 +273,11 @@ end
 -- tokens or non-token spans (e.g. \t, space, etc...)
 -- Tokens may be made to contain spaces via quoting ("", '') of the token or escaping spaces.
 function Tokenizer.tokenize (str, up_to)
-   up_to = up_to or #str
+   if up_to and up_to <= #str then
+      up_to = up_to
+   else
+      up_to = #str
+   end
 
    local token = nil
 
@@ -310,7 +383,7 @@ function Tokenizer.find_at_pos (tokens, pos)
 end
 
 function Tokenizer.singleton(content)
-   return Token.from_string(content)
+   return Token.singleton(content)
 end
 
 return Tokenizer
