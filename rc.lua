@@ -20,6 +20,7 @@ local wm_state = {
    ddc             = DDCUtil:new({"HTPM400169", "HTPM400178"}),
    keys            = {},
    default_layouts = {},
+   client          = { keys = {}, buttons = {} },
    modkey          = "Mod4",
 }
 
@@ -48,6 +49,8 @@ function load_frags(state, full)
    local frag_dir = util.filesystem.get_configuration_dir() .. "conf.d"
    print('Loading fragments from ' .. frag_dir)
 
+   rh_data.known_frags = collect_frags(frag_dir)
+
    for _i, frag_name in ipairs(collect_frags(frag_dir)) do
       print('Loading fragment ' .. frag_name)
       local frag = dofile(frag_name)
@@ -57,10 +60,17 @@ end
 
 -- load fragments, update any values controlled by state table
 function load_config(state, full)
+   -- reset declarative stuff
+   state.commands = {}
+   state.keys = {}
+   state.client.keys = {}
+   state.client.buttons = {}
+
    -- run state through frags
    load_frags(state, full)
 
    -- re-set keybinds to populated keybindings
+   -- TODO use new global keybinding API
    root.keys(state.keys)
 
    -- re-load default layout list
