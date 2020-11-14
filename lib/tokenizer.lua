@@ -67,7 +67,6 @@ end
 -- do the same, ad infinitum
 function Token:recompute_offset()
    self.end_pos = self.start_pos + #self.content
-   print('recomputed «' .. self.content .. '» (' .. self.start_pos .. ', ' .. self.end_pos .. ')')
    if self.next then
       self.next.start_pos = self.end_pos + 1
       self.next:recompute_offset()
@@ -79,8 +78,6 @@ end
 -- and insert that token chain between this token and its current neighbour
 -- after doing this, the start_pos will be recomputed for all tokens after this token
 function Token:append(token)
-   print('append to «' .. self.content .. '» tok(«' .. token.content .. '»)')
-
    token:tail().next = self.next
    self.next = token
    self:recompute_offset()
@@ -90,8 +87,6 @@ end
 -- Same as append, but inserts whitespace before the new token
 -- if the next token would not otherwise be whitespace
 function Token:append_separated(token)
-   print('append sep «' .. token.content .. '»')
-
    if self.whitespace then
       return self:append(token)
    else
@@ -256,9 +251,6 @@ function Tokenizer.tokenize (str, up_to)
          result.lhs_tail = token
       end
 
-
-      --'test string  "with spaces" \\a\\ \\ '
-      print("e=" .. tostring(esc) .. " ef=" .. tostring(esc_flag) .. " c=«" .. c .. "» n=«" .. tostring(n) .. "»" .. " «" .. token.content .. "»")
 
       if false and esc and token.whitespace then -- if in a whitespace token, stop building the current token
          token.end_pos = i - 1 -- end pos is before this char, since we're examining \
