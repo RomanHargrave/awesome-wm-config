@@ -7,7 +7,6 @@ local util = require('gears')
 local wibox = require('wibox')
 local theme = require('beautiful')
 local tokenizer = require('lib/tokenizer')
-local rh = require('lib/rh')
 
 local CommandPrompt = {}
 
