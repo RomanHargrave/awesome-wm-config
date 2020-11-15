@@ -15,72 +15,70 @@ local MediaControl = require('lib/media_control')
 local DDCUtil      = require('lib/ddcutil')
 
 -- Table that tracks configuration state across reloads
-local wm_state = {
+_G.rh_data = {
    media           = MediaControl:new({"cantata"}),
    ddc             = DDCUtil:new({"HTPM400169", "HTPM400178"}),
    keys            = {},
    default_layouts = {},
    client          = { keys = {}, buttons = {} },
    modkey          = "Mod4",
+   cfg_dir         = util.filesystem.get_configuration_dir()
 }
 
-_G.rh_data = wm_state -- i'm lazy (shrug)
-
 -- Collects fragments to load
-function collect_frags(dir)
-   local sorted = {}
+function rh_data:collect_frags()
+   local dir = self.cfg_dir .. 'conf.d'
+   self.frags = {}
    for file in fs.dir(dir) do
       if string.match(file, '.lua$') then
-         --table.insert(sorted, dir .. '/' .. string.gsub(file, '.lua$', ''))
-         table.insert(sorted, dir .. '/' .. file)
+         table.insert(self.frags, dir .. '/' .. file)
       end
    end
 
-   table.sort(sorted)
+   table.sort(self.frags)
+end
 
-   return sorted
+function rh_data:load_frag(frag_name, full)
+   local frag = dofile(frag_name)
+   local s, r = pcall(frag, self, full)
+
+   if not s then
+      util.debug.print_warning('Failed to load frag «' .. frag_name .. '»: ' .. r)
+   end
 end
 
 -- iterate through fragment files and loads them
 -- order of loading depends on both the system sorting results
 -- as well as frags being named in order to take advantage
 -- (e.g. 00-first.lua, ZZ-last.lua)
-function load_frags(state, full)
-   local frag_dir = util.filesystem.get_configuration_dir() .. "conf.d"
-   print('Loading fragments from ' .. frag_dir)
-
-   rh_data.known_frags = collect_frags(frag_dir)
-
-   for _i, frag_name in ipairs(collect_frags(frag_dir)) do
-      print('Loading fragment ' .. frag_name)
-      local frag = dofile(frag_name)
-      frag(state, full)
+function rh_data:load_frags(full)
+   self:collect_frags()
+   for _, frag_name in ipairs(self.frags) do
+      self:load_frag(frag_name, full)
    end
 end
 
 -- load fragments, update any values controlled by state table
-function load_config(state, full)
+function rh_data:load_config(full)
    -- reset declarative stuff
-   state.commands = {}
-   state.keys = {}
-   state.client.keys = {}
-   state.client.buttons = {}
+   self.commands = {}
+   self.keys = {}
+   self.client.keys = {}
+   self.client.buttons = {}
 
-   -- run state through frags
-   load_frags(state, full)
+   -- run frags
+   self:load_frags(full)
 
    -- re-set keybinds to populated keybindings
    -- TODO use new global keybinding API
-   root.keys(state.keys)
+   root.keys(self.keys)
 
    -- re-load default layout list
    -- this is done in the following fashion to be "nice" to the layout handler
    for _i, layout in ipairs(wm.layout.layouts) do wm.layout.remove_default_layout(layout) end
-   for _i, layout in ipairs(state.default_layouts) do wm.layout.append_default_layout(layout) end
+   for _i, layout in ipairs(self.default_layouts) do wm.layout.append_default_layout(layout) end
 end
 
-
-----------------------------
 -- Load the configuration
 
-load_config(wm_state, true)
+rh_data:load_config(true)
