@@ -1,3 +1,11 @@
 * Awesome (WM) configuration
 
 My (overly complicated) awesome config
+
+** Dependencies
+
+~luarocks~ (or equivalent) is required, and the following rocks must be installed
+
+- ~minifs~
+- ~inifile~
+- ~media_player~
