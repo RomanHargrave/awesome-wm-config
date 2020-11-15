@@ -7,7 +7,7 @@ local util  = require('gears')
 local theme = require('beautiful')
 
 return function(state, full)
-   theme.init(util.filesystem.get_themes_dir() .. 'default/theme.lua')
-   --theme.init({ font = 'sans 10' })
-   theme.font = 'sans 12'
+   theme.init(state.cfg_dir .. 'themes/pine/theme.lua')
+   theme.font = 'sans 11'
+   theme.wallpaper = state.cfg_dir .. 'themes/pine/background.jpg'
 end
