@@ -22,7 +22,7 @@ function CommandPrompt:new(commands)
       geometry = {
          min_height = theme.get_font_height(theme.font),
          inset = 2,
-         width_factor = 8,
+         width_factor = 5,
          width = nil
       },
       suggestions = {},
@@ -89,6 +89,7 @@ function CommandPrompt:invoke_command(command)
    if syn.head then
       local argv = syn.head:collect_plain_words()
       argv.raw = command
+      argv.syn = syn
 
       local command = nil
       for _, cmd in ipairs(self.commands) do
@@ -301,6 +302,4 @@ return function(state, full)
                       end
                 end)
    ) -- table.insert
-
-   state.command_prompt:show()
 end
