@@ -25,14 +25,13 @@ return function(state, full)
                        end)
    })
 
-   -- Base window rules (specific rules should be added in a later frag)
+   -- Base window rules
    wm.rules.rules = {
       { -- Base rule
          rule = {},
          properties = {
             border_width = theme.border_width,
             border_color = theme.border_color,
-            focus        = wm.client.focus.filter,
             raise        = true,
             keys         = state.client.keys,
             buttons      = state.client.buttons,
@@ -46,6 +45,30 @@ return function(state, full)
             name = { 'Event Tester' },
             role = { 'pop-up' }
          },
+         properties = { floating = true }
+      },
+      { -- Yakuake
+         rule = { class = 'yakuake' },
+         properties = {
+            floating = true,
+            sticky = true,
+            maximized_horizontal = true,
+            maximized_vertical = false,
+            titlebars_enabled = false,
+            size_hints_honor = true,
+            placement = wm.placement.no_offscreen,
+            border_width = 0
+         }
+      },
+      { -- Steam (disable SSD)
+         rule = { class = 'Steam' },
+         properties = {
+            titlebars_enabled = false,
+            border_width = 0
+         }
+      },
+      { -- Flameshot (prevent tiling of any popups)
+         rule = { class = 'flameshot' },
          properties = { floating = true }
       },
       {
