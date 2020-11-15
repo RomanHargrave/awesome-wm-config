@@ -8,6 +8,4 @@ local theme = require('beautiful')
 
 return function(state, full)
    theme.init(state.cfg_dir .. 'themes/pine/theme.lua')
-   theme.font = 'sans 11'
-   theme.wallpaper = state.cfg_dir .. 'themes/pine/background.jpg'
 end
