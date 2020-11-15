@@ -79,7 +79,7 @@ local function suggest_clients(criteria)
       end
    else
       for _, client in ipairs(_G.client.get()) do
-      if string.find(client.name, criteria) then
+      if string.match(client.name, criteria) then
             table.insert(suggestions, { text = client.name,
                                         description = 'client #' .. client.window })
          end
@@ -257,13 +257,25 @@ local base_commands = {
       end
    },
    {
-      verb = 'r',
-      description = 'run command',
-      help = 'r command*',
+      verb = 'rc',
+      description = 'reload config (fragment)',
+      completion_fn = function(data)
+         local nw = data.syn.head:next_word()
+         local suggestions = {'*'}
+         local filter = ''
+         if nw then
+            filter = nw:join_raw()
+         end
+         for _, frag in ipairs(_G.rh_data.frags) do
+            if frag:match(filter) then
+               table.insert(suggestions, frag)
+            end
+         end
+         return suggestions
+      end,
       exec_fn = function(argv)
-         wm.spawn(remove_verb(argv.raw), false)
       end
-   }
+   },
 }
 
 return function(state, full)

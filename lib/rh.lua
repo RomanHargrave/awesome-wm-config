@@ -36,4 +36,48 @@ function rh.dump_table(tbl, depth)
    end
 end
 
+function rh.clone_tbl(tbl)
+   local r = {}
+   for k, v in pairs(tbl) do
+      if type(v) == 'table' then
+         r[k] = rh.clone_tbl(v)
+      else
+         r[k] = v
+      end
+   end
+   return r
+end
+
+-- side-effecting
+function rh.uniq(tbl)
+   table.sort(tbl)
+   local r = {tbl[1]}
+   for _, e in ipairs(tbl) do
+      if r[#r] ~= e then
+         table.insert(r, e)
+      end
+   end
+   return r
+end
+
+function rh.split_path(str)
+   local entries = {}
+   local buf = ''
+
+   for i = 1, #str do
+      local c = str:sub(i,i)
+      if c == ':' then
+         table.insert(entries, buf)
+         buf = ''
+      else
+         buf = buf .. c
+      end
+   end
+   return rh.uniq(entries)
+end
+
+function rh.collect_exec(path_entries)
+   
+end
+
 return rh
