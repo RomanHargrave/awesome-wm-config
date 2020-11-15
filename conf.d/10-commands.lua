@@ -3,6 +3,7 @@
 
 local wm = require('awful')
 local util = require('gears')
+local rh = require('lib/rh')
 
 local function remove_verb(command)
    return command:gsub('^[^%s]+%s*', '')
@@ -196,10 +197,46 @@ local base_commands = {
       verb = 'mc',
       description = 'move client',
       help = 'mc <tag> [screen = current]',
-      completion_fn = function(query)
-         -- todo support specifying client rather than focused
+      completion_fn = function(data)
+         local tokens = data.syn.head:collect_plain_words()
+         local count = data.syn.head:count() -- this will include whitespace
+         local tag = tokens[2] or ''
+         local screen = tokens[3] or ''
+         local client = tokens[4] or ''
+
+         if count <= 3 then
+            return suggest_tags(tag)
+         elseif count <= 5 then
+            return suggest_screens_for_tag(tag, screen)
+         elseif count <= 6 then
+            return suggest_clients(client)
+         end
+
+         return {}
       end,
-      exec_fn = function(query)
+      exec_fn = function(argv)
+         local tag_name = argv[2]
+         local screen_name = argv[3]
+         local client_name = argv[4]
+         local screen = wm.screen.focused()
+         local client = _G.client.focus
+
+         if tag_name then
+            if client_name then
+               client = find_client(client_name)
+            end
+
+            if screen_name then
+               local cx, cy = coords_to_table(screen_name[3])
+               screen = _G.screen[wm.screen.getbycoord(cx, cy)]
+            end
+
+            local tag = wm.tag.find_by_name(screen, tag_name)
+
+            if tag then
+               client:move_to_tag(tag)
+            end
+         end
       end
    },
    {
@@ -224,7 +261,7 @@ local base_commands = {
       description = 'run command',
       help = 'r command*',
       exec_fn = function(argv)
-         wm.spawn(remove_verb(argv.raw))
+         wm.spawn(remove_verb(argv.raw), false)
       end
    }
 }
