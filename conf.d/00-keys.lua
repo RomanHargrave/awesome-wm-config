@@ -24,6 +24,6 @@ return function(state, full)
       wm.key({}, 'F24', function() wm.spawn('yakuake') end),
 
       -- Open terminal
-      wm.key({state.modkey}, 'Return', function() awful.spawn('konsole') end),
+      wm.key({state.modkey}, 'Return', function() wm.spawn('konsole') end),
    }
 end
