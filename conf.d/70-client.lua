@@ -6,9 +6,15 @@ local util = require('gears')
 local wibox = require('wibox')
 local theme = require('beautiful')
 
+-- TODO - this
+require('awful.permissions._common')._deprecated_autofocus_in_use()
+
 return function(state, full)
    util.table.merge(state.client.keys, {
-
+                       wm.key({ state.modkey }, 'f', function(client)
+                             client.fullscreen = not client.fullscreen
+                             client:raise()
+                       end, { description = 'toggle fullscreen', group = 'client' })
    })
 
    util.table.merge(state.client.buttons, {
