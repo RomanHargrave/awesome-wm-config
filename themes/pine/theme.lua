@@ -11,10 +11,11 @@ local themes_path = gfs.get_themes_dir()
 
 local theme = {}
 
-theme.font          = "Source Code Pro 8"
+theme.font          = "IBM Plex Mono 8"
 
 theme.bg_normal     = "#0c1400"
-theme.bg_focus      = "#222b14"
+-- theme.bg_focus      = "#222b14"
+theme.bg_focus      = theme.bg_normal
 theme.bg_urgent     = "#5f8787"
 theme.bg_minimize   = "#121e00"
 theme.bg_systray    = theme.bg_normal
@@ -25,9 +26,9 @@ theme.fg_urgent     = theme.fg_focus
 theme.fg_minimize   = theme.fg_focus
 
 theme.useless_gap         = dpi(0)
-theme.border_width        = dpi(1)
+theme.border_width        = dpi(0)
 theme.border_color_normal = theme.bg_normal
-theme.border_color_active = theme.bg_focus
+theme.border_color_active = theme.bg_normal
 theme.border_color_marked = "#ce4e2b"
 
 -- There are other variable sets
