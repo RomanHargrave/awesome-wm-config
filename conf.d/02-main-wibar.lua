@@ -11,7 +11,7 @@ return function(state, full)
       wm.button({}, 1, function(tag) tag:view_only() end),
       wm.button({state.modkey}, 1, function(tag)
             if wm.client.focus then
-               wm.client.focuse:move_to_tag(tag)
+               wm.client.focus:move_to_tag(tag)
             end
       end) 
    )
